@@ -263,8 +263,8 @@ void apply_deprecated_dht_settings(settings_pack& sett, bdecode_node const& s)
 		{
 			bool const v4 = uep.addr.is_v4();
 			// check if this endpoint requires temporary or permanent addresses only
-			bool const require_temporary = (uep.flags & listen_socket_t::temporary_only) != 0;
-			bool const require_permanent = (uep.flags & listen_socket_t::permanent_only) != 0;
+			bool const require_temporary = bool(uep.flags & listen_socket_t::temporary_only);
+			bool const require_permanent = bool(uep.flags & listen_socket_t::permanent_only);
 			for (auto const& ipface : ifs)
 			{
 				if (!ipface.preferred)
