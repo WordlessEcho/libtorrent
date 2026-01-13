@@ -65,12 +65,16 @@ namespace libtorrent::aux {
 		int port;
 		bool ssl;
 		bool local;
+		bool temporary_only = false;
+		bool permanent_only = false;
 		friend bool operator==(listen_interface_t const& lhs, listen_interface_t const& rhs)
 		{
 			return lhs.device == rhs.device
 				&& lhs.port == rhs.port
 				&& lhs.ssl == rhs.ssl
-				&& lhs.local == rhs.local;
+				&& lhs.local == rhs.local
+				&& lhs.temporary_only == rhs.temporary_only
+				&& lhs.permanent_only == rhs.permanent_only;
 		}
 	};
 

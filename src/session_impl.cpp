@@ -262,6 +262,9 @@ void apply_deprecated_dht_settings(settings_pack& sett, bdecode_node const& s)
 		for (auto const& uep : unspecified_eps)
 		{
 			bool const v4 = uep.addr.is_v4();
+			// check if this endpoint requires temporary or permanent addresses only
+			bool const require_temporary = (uep.flags & listen_socket_t::temporary_only) != 0;
+			bool const require_permanent = (uep.flags & listen_socket_t::permanent_only) != 0;
 			for (auto const& ipface : ifs)
 			{
 				if (!ipface.preferred)
@@ -269,6 +272,12 @@ void apply_deprecated_dht_settings(settings_pack& sett, bdecode_node const& s)
 				if (ipface.interface_address.is_v4() != v4)
 					continue;
 				if (!uep.device.empty() && uep.device != ipface.name)
+					continue;
+				// if temporary_only is required, skip non-temporary addresses
+				if (require_temporary && !ipface.temporary)
+					continue;
+				// if permanent_only is required, skip temporary addresses
+				if (require_permanent && ipface.temporary)
 					continue;
 				if (std::any_of(eps.begin(), eps.end(), [&](listen_endpoint_t const& e)
 				{
@@ -1981,6 +1990,8 @@ retry:
 		, std::vector<listen_endpoint_t>& eps)
 	{
 		flags |= iface.local ? listen_socket_t::local_network : listen_socket_flags_t{};
+		flags |= iface.temporary_only ? listen_socket_t::temporary_only : listen_socket_flags_t{};
+		flags |= iface.permanent_only ? listen_socket_t::permanent_only : listen_socket_flags_t{};
 		transport const ssl = iface.ssl ? transport::ssl : transport::plaintext;
 
 		// First, check to see if it's an IP address
@@ -2002,6 +2013,13 @@ retry:
 				// (which must be of the same family as the address we're
 				// connecting to)
 				if (iface.device != ipface.name) continue;
+
+				// if temporary_only is set, only use IPv6 temporary (privacy extension) addresses
+				if (iface.temporary_only && !ipface.temporary)
+					continue;
+				// if permanent_only is set, only use IPv6 permanent (non-temporary) addresses
+				if (iface.permanent_only && ipface.temporary)
+					continue;
 
 				bool const local = iface.local
 					|| ipface.interface_address.is_loopback()

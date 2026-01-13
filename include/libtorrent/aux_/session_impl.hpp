@@ -153,6 +153,12 @@ namespace aux {
 		// representing that one proxy
 		static inline constexpr listen_socket_flags_t proxy = 3_bit;
 
+		// only use IPv6 temporary (privacy extension) addresses for this interface
+		static inline constexpr listen_socket_flags_t temporary_only = 4_bit;
+
+		// only use IPv6 permanent (stable) addresses for this interface
+		static inline constexpr listen_socket_flags_t permanent_only = 5_bit;
+
 		listen_socket_t() = default;
 
 		// listen_socket_t should not be copied or moved because
