@@ -109,6 +109,10 @@ enum : int {
 #define IFA_F_DADFAILED 8
 #endif
 
+#ifndef IFA_F_TEMPORARY
+#define IFA_F_TEMPORARY 0x01
+#endif
+
 #endif
 
 #if TORRENT_USE_IFADDRS
@@ -417,6 +421,9 @@ namespace {
 		if (interface == nics.end()) return false;
 
 		ip_info->preferred = (addr_msg->ifa_flags & (IFA_F_DADFAILED | IFA_F_DEPRECATED | IFA_F_TENTATIVE)) == 0;
+		// IFA_F_TEMPORARY indicates an IPv6 temporary (privacy extension) address
+		ip_info->temporary = (addr_msg->ifa_family == AF_INET6)
+			&& (addr_msg->ifa_flags & IFA_F_TEMPORARY) != 0;
 		ip_info->netmask = build_netmask(addr_msg->ifa_prefixlen, addr_msg->ifa_family);
 
 		ip_info->interface_address = address();
@@ -861,6 +868,9 @@ int _System __libsocket_sysctl(int* mib, u_int namelen, void *oldp, size_t *oldl
 						r.flags |= if_flags::up;
 
 					r.preferred = unicast->DadState == IpDadStatePreferred;
+					// IpSuffixOriginRandom indicates an IPv6 temporary (privacy extension) address
+					r.temporary = (family == AF_INET6)
+						&& (unicast->SuffixOrigin == IpSuffixOriginRandom);
 					r.interface_address = sockaddr_to_address(unicast->Address.lpSockaddr);
 					int const max_prefix_len = family == AF_INET ? 32 : 128;
 

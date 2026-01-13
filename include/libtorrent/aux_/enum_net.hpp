@@ -81,6 +81,8 @@ enum class if_state : std::uint8_t {
 		// an interface is preferred if its address is
 		// not tentative/duplicate/deprecated
 		bool preferred = true;
+		// true if this is an IPv6 temporary (privacy extension) address
+		bool temporary = false;
 
 		interface_flags flags = if_flags::up;
 		if_state state = if_state::unknown;
