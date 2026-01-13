@@ -172,6 +172,13 @@ jobs:
           set PATH=%BOOST_ROOT%;%PATH%
           cd examples
           b2 ${{ matrix.config }} msvc-version-macro=on address-model=64 warnings=all warnings-as-errors=on
+ 
+      - name: upload examples
+        if: ${{ ! contains(matrix.config, 'windows-api=store') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: examples-windows-${{ matrix.config }}
+          path: examples/bin
 
       - name: build tools
         if: ${{ ! contains(matrix.config, 'windows-api=store') }}
