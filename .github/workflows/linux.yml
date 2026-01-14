@@ -76,6 +76,12 @@ jobs:
         run: |
           cd examples
           b2 ${{ matrix.config }} cxxstd=${{ matrix.std }} warnings-as-errors=on
+ 
+      - name: upload examples
+        uses: actions/upload-artifact@v4
+        with:
+          name: examples-linux-${{ matrix.config }}
+          path: examples/bin
 
       - name: build tools
         run: |

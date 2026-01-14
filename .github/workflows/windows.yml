@@ -172,6 +172,53 @@ jobs:
           set PATH=%BOOST_ROOT%;%PATH%
           cd examples
           b2 ${{ matrix.config }} msvc-version-macro=on address-model=64 warnings=all warnings-as-errors=on
+ 
+      - name: create bundle script
+        if: ${{ ! contains(matrix.config, 'windows-api=store') }}
+        shell: pwsh
+        run: |
+          $content = @'
+          $exes = Get-ChildItem -Path examples/bin -Recurse -Filter *.exe
+          foreach ($exe in $exes) {
+            Write-Host "Checking dependencies for $($exe.Name)..."
+            $dump = dumpbin /dependents $exe.FullName
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "dumpbin failed for $($exe.Name)"
+              continue
+            }
+            $deps = $dump | Select-String -Pattern "^\s*(\S+\.dll)" | ForEach-Object { $_.Matches.Groups[1].Value }
+            foreach ($dep in $deps) {
+              if ($dep -match "^(KERNEL32|USER32|ADVAPI32|WS2_32|IPHLPAPI|GDI32|SHELL32|OLE32|RPCRT4|IMM32|CRYPT32|BCRYPT|NORMALIZ|MSVCP|VCRUNTIME|ucrtbase)\.dll$") { continue }
+              $cmd = Get-Command $dep -ErrorAction SilentlyContinue
+              if ($cmd) {
+                $source = if ($cmd -is [array]) { $cmd[0].Source } else { $cmd.Source }
+                if ($source -like "*\Windows\System32*" -or $source -like "*\Windows\SysWOW64*") { continue }
+                $dest = Join-Path $exe.DirectoryName $dep
+                if (!(Test-Path $dest)) {
+                  Write-Host "Bundling $dep from $source"
+                  Copy-Item $source -Destination $dest
+                }
+              } else {
+                Write-Host "Warning: $dep not found in PATH"
+              }
+            }
+          }
+          '@
+          Set-Content -Path bundle_deps.ps1 -Value $content
+
+      - name: bundle dependencies
+        if: ${{ ! contains(matrix.config, 'windows-api=store') }}
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          powershell -ExecutionPolicy Bypass -File bundle_deps.ps1
+
+      - name: upload examples
+        if: ${{ ! contains(matrix.config, 'windows-api=store') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: examples-windows-${{ matrix.config }}
+          path: examples/bin
 
       - name: build tools
         if: ${{ ! contains(matrix.config, 'windows-api=store') }}

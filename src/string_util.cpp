@@ -191,6 +191,8 @@ namespace libtorrent::aux {
 			listen_interface_t iface;
 			iface.ssl = false;
 			iface.local = false;
+			iface.temporary_only = false;
+			iface.permanent_only = false;
 
 			string_view port;
 			if (element.front() == '[')
@@ -242,13 +244,15 @@ namespace libtorrent::aux {
 			port.remove_prefix(port_str.size());
 			port = strip_string(port);
 
-			// consume potential SSL 's'
+			// consume potential SSL 's', local 'l', temporary 't', permanent 'p'
 			for (auto const c : port)
 			{
 				switch (c)
 				{
 					case 's': iface.ssl = true; break;
 					case 'l': iface.local = true; break;
+					case 't': iface.temporary_only = true; break;
+					case 'p': iface.permanent_only = true; break;
 				}
 			}
 
