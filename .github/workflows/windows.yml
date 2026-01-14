@@ -173,6 +173,21 @@ jobs:
           cd examples
           b2 ${{ matrix.config }} msvc-version-macro=on address-model=64 warnings=all warnings-as-errors=on
  
+      - name: bundle openssl
+        if: ${{ ! contains(matrix.config, 'windows-api=store') }}
+        shell: pwsh
+        run: |
+          $dlls = @("libssl-3-x64.dll", "libcrypto-3-x64.dll")
+          foreach ($dll in $dlls) {
+            $path = (Get-Command $dll -ErrorAction SilentlyContinue).Source
+            if ($path) {
+              echo "Bundling $path"
+              Copy-Item $path -Destination examples/bin/
+            } else {
+              echo "$dll not found in PATH"
+            }
+          }
+
       - name: upload examples
         if: ${{ ! contains(matrix.config, 'windows-api=store') }}
         uses: actions/upload-artifact@v4
