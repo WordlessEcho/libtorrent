@@ -173,18 +173,39 @@ jobs:
           cd examples
           b2 ${{ matrix.config }} msvc-version-macro=on address-model=64 warnings=all warnings-as-errors=on
  
-      - name: bundle openssl
+      - name: bundle dependencies
         if: ${{ ! contains(matrix.config, 'windows-api=store') }}
         shell: pwsh
         run: |
-          $dlls = @("libssl-3-x64.dll", "libcrypto-3-x64.dll")
-          foreach ($dll in $dlls) {
-            $path = (Get-Command $dll -ErrorAction SilentlyContinue).Source
-            if ($path) {
-              echo "Bundling $path"
-              Copy-Item $path -Destination examples/bin/
-            } else {
-              echo "$dll not found in PATH"
+          $exes = Get-ChildItem -Path examples/bin -Recurse -Filter *.exe
+          foreach ($exe in $exes) {
+            echo "Checking dependencies for $($exe.Name)..."
+            $dump = dumpbin /dependents $exe.FullName
+            if ($lastExitCode -ne 0) {
+              echo "dumpbin failed for $($exe.Name)"
+              continue
+            }
+            $deps = $dump | Select-String -Pattern "^\s*(\S+\.dll)" | ForEach-Object { $_.Matches.Groups[1].Value }
+            foreach ($dep in $deps) {
+              # Skip typical system DLLs to save space/time
+              if ($dep -match "^(KERNEL32|USER32|ADVAPI32|WS2_32|IPHLPAPI|GDI32|SHELL32|OLE32|RPCRT4|IMM32|CRYPT32|BCRYPT|NORMALIZ|MSVCP|VCRUNTIME|ucrtbase)\.dll$") { continue }
+              
+              $cmd = Get-Command $dep -ErrorAction SilentlyContinue
+              if ($cmd) {
+                # Handle case where Get-Command returns multiple
+                $source = if ($cmd -is [array]) { $cmd[0].Source } else { $cmd.Source }
+                
+                # Skip if it is in Windows directory
+                if ($source -like "*\Windows\System32*" -or $source -like "*\Windows\SysWOW64*") { continue }
+                
+                $dest = Join-Path $exe.DirectoryName $dep
+                if (!(Test-Path $dest)) {
+                  echo "Bundling $dep from $source"
+                  Copy-Item $source -Destination $dest
+                }
+              } else {
+                echo "Warning: $dep not found in PATH"
+              }
             }
           }
 
